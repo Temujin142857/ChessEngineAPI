@@ -1,22 +1,26 @@
 const { spawn } = require("child_process");
-
 const enginePath = "path/to/your/chess/engine";
 let engineReady = false;
+let playerIsWhite = true;
+let engine;
 
-// Start the chess engine as a child process
-const engine = spawn(enginePath);
+exports.setupGame = () => {
+	// Start the chess engine as a child process
+	engine = spawn(enginePath[playerIsWhite.toString()], {
+		stdio: [process.stdin, process.stdout, process.stderr],
+	});
+	// Send UCI (Universal Chess Interface) command to initialize the engine
+	engine.stdin.write("engine ready?\n");
 
-// Send UCI (Universal Chess Interface) command to initialize the engine
-engine.stdin.write("uci\n");
-
-// Listen for output from the engine
-engine.stdout.on("data", (data) => {
-	const output = data.toString();
-	console.log("Engine Output:", output);
-	if (output.includes("uciok")) {
-		engineReady = true;
-	}
-});
+	// Listen for output from the engine
+	engine.stdout.on("data", (data) => {
+		const output = data.toString();
+		console.log("Engine Output:", output);
+		if (output.includes("ready")) {
+			engineReady = true;
+		}
+	});
+};
 
 exports.handleSelection = (req, res) => {
 	if (!engineReady) {
@@ -35,6 +39,7 @@ exports.handleSelection = (req, res) => {
 	// Wait for the engine's response
 	const handleEngineResponse = (data) => {
 		const output = data.toString();
+		//needs to match the pattern I have in the java
 		const match = output.match(/bestmove\s(\S+)/);
 		if (match) {
 			const bestMove = match[1];
