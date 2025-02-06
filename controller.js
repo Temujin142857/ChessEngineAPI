@@ -16,47 +16,106 @@ exports.setupGame = (req, res) => {
 			stdio: ["pipe", "pipe", "pipe"],
 		},
 	);
-	// Send UCI (Universal Chess Interface) command to initialize the engine
+
 	engine.stdin.write("engine ready?\n");
 
 	// Listen for output from the engine
-	engine.stdout.on("data", (data) => {
+	const handleStartupResponce = (data) => {
 		const output = data.toString();
 		console.log("Engine Output:", output);
 		if (output.includes("ready")) {
 			engineReady = true;
-			return res.status(200).json({ message: "succes" });
+			res.status(200).json({ message: "succes" });
 		} else {
-			return res.status(500).json({ error: "Error starting engine" });
+			res.status(500).json({ error: "Error starting engine" });
 		}
-	});
+		engine.stdout.removeListener("data", handleStartupResponce);
+	};
+	engine.stdout.on("data", handleStartupResponce);
 };
 
 exports.handleSelection = (req, res) => {
 	if (!engineReady) {
+		console.log("Engine not ready.");
 		return res.status(500).json({ error: "Engine not ready" });
 	}
 
-	const { coordinates } = req.body; // Expecting coordinates that were clicked
+	const { coordinates } = req.body;
 
 	if (!coordinates) {
+		console.log("No moves provided.");
 		return res.status(400).json({ error: "No moves provided" });
 	}
 
-	// Send position and request best move
-	engine.stdin.write(`position startpos moves ${coordinates}\n`);
+	const message = `coordinates:${coordinates[0]},${coordinates[1]}\n`;
 
-	// Wait for the engine's response
+	console.log("Sending to engine:", message);
+	engine.stdin.write(message);
+	let responded = false;
 	const handleEngineResponse = (data) => {
-		const output = data.toString();
-		//needs to match the pattern I have in the java
-		const match = output.match(/bestmove\s(\S+)/);
-		if (match) {
-			const bestMove = match[1];
-			res.json({ bestMove });
+		const output = data.toString().trim();
+		console.log("Engine Output:", output);
+
+		if (output.includes("move success")) {
+			const temp = output.split(";")[2];
+			const board = temp.split(":")[1];
+			console.log("Sending response - Board:", board);
+			responded = true;
+			res.status(200).json({ board });
+		} else if (output.includes("selection success")) {
+			const temp = output.split(";")[1];
+			const highlightTarget = temp.split(":")[1];
+			console.log(
+				"Sending response - Highlight Target:",
+				highlightTarget,
+			);
+			responded = true;
+			res.status(200).json({ highlightTarget });
+		} else if (output.includes("illigal move")) {
+			const temp = output.split(";")[1];
+			const highlightTarget = temp.split(":")[1];
+			console.log("Sending response - illegal move");
+			responded = true;
+			res.status(200).json({ result: "illegal move" });
+		} else if (output.includes("error")) {
+			console.log("Error in engine response.");
+			responded = true;
+			res.status(500).json({ error: "Error processing selection" });
+		}
+		if (responded) {
 			engine.stdout.removeListener("data", handleEngineResponse);
 		}
 	};
+	engine.stdout.on("data", handleEngineResponse);
+};
 
+exports.getEngineMove = (req, res) => {
+	if (!engineReady) {
+		console.log("Engine not ready.");
+		return res.status(500).json({ error: "Engine not ready" });
+	}
+
+	const message = "requesting engine move";
+	engine.stdin.write(message);
+
+	const handleEngineResponse = (data) => {
+		const output = data.toString().trim();
+		console.log("Engine Output:", output);
+
+		if (output.includes("move success")) {
+			const temp = output.split(";")[2];
+			const board = temp.split(":")[1];
+			console.log("Sending response - Board:", board);
+			responded = true;
+			res.status(200).json({ board });
+		} else if (output.includes("error")) {
+			console.log("Error in engine response.");
+			responded = true;
+			res.status(500).json({ error: "Error processing selection" });
+		}
+		if (responded) {
+			engine.stdout.removeListener("data", handleEngineResponse);
+		}
+	};
 	engine.stdout.on("data", handleEngineResponse);
 };
