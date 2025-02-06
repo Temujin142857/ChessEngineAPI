@@ -1,9 +1,15 @@
 const express = require("express");
 var app = express();
-const handleSelection = require("controller.js");
+app.use(express.json());
 
-app.post("/", (req, res) => {
+const { handleSelection, setupGame } = require("./controller.js");
+
+app.post("/handleSelection", (req, res) => {
 	handleSelection(req, res);
+});
+
+app.get("/startGame", (req, res) => {
+	setupGame(req, res);
 });
 
 app.listen(10000, function () {

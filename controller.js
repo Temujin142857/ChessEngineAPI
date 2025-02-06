@@ -1,14 +1,21 @@
 const { spawn } = require("child_process");
-const enginePath = "path/to/your/chess/engine";
+const javaExecutable = "java"; // Ensure Java is in your system's PATH
+const enginePath =
+	"C:\\Users\\Tomio\\Programming\\Chess\\Chess_App_Headless\\out\\artifacts\\Chess_Engine_jar\\Chess_Engine.jar";
+
 let engineReady = false;
 let playerIsWhite = true;
 let engine;
 
-exports.setupGame = () => {
+exports.setupGame = (req, res) => {
 	// Start the chess engine as a child process
-	engine = spawn(enginePath[playerIsWhite.toString()], {
-		stdio: [process.stdin, process.stdout, process.stderr],
-	});
+	engine = spawn(
+		javaExecutable,
+		["-jar", enginePath, playerIsWhite.toString()],
+		{
+			stdio: ["pipe", "pipe", "pipe"],
+		},
+	);
 	// Send UCI (Universal Chess Interface) command to initialize the engine
 	engine.stdin.write("engine ready?\n");
 
@@ -18,6 +25,9 @@ exports.setupGame = () => {
 		console.log("Engine Output:", output);
 		if (output.includes("ready")) {
 			engineReady = true;
+			return res.status(200).json({ message: "succes" });
+		} else {
+			return res.status(500).json({ error: "Error starting engine" });
 		}
 	});
 };
