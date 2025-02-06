@@ -71,7 +71,7 @@ exports.handleSelection = (req, res) => {
 			);
 			responded = true;
 			res.status(200).json({ highlightTarget });
-		} else if (output.includes("illigal move")) {
+		} else if (output.includes("illegal move")) {
 			const temp = output.split(";")[1];
 			const highlightTarget = temp.split(":")[1];
 			console.log("Sending response - illegal move");
@@ -95,8 +95,11 @@ exports.getEngineMove = (req, res) => {
 		return res.status(500).json({ error: "Engine not ready" });
 	}
 
-	const message = "requesting engine move";
+	const message = "perform engine move";
+	console.log("Sending to engine:", message);
 	engine.stdin.write(message);
+
+	let responded = false;
 
 	const handleEngineResponse = (data) => {
 		const output = data.toString().trim();
