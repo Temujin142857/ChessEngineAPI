@@ -25,11 +25,11 @@ exports.setupGame = (req, res) => {
 		console.log("Engine Output:", output);
 		if (output.includes("ready")) {
 			engineReady = true;
+			engine.stdout.removeListener("data", handleStartupResponce);
 			res.status(200).json({ message: "succes" });
 		} else {
-			res.status(500).json({ error: "Error starting engine" });
+			//res.status(500).json({ error: "Error starting engine" });
 		}
-		engine.stdout.removeListener("data", handleStartupResponce);
 	};
 	engine.stdout.on("data", handleStartupResponce);
 };
@@ -84,6 +84,7 @@ exports.handleSelection = (req, res) => {
 		}
 		if (responded) {
 			engine.stdout.removeListener("data", handleEngineResponse);
+			console.log("removed");
 		}
 	};
 	engine.stdout.on("data", handleEngineResponse);
@@ -95,13 +96,13 @@ exports.getEngineMove = (req, res) => {
 		return res.status(500).json({ error: "Engine not ready" });
 	}
 
-	const message = "perform engine move";
-	console.log("Sending to engine:", message);
-	engine.stdin.write(message);
+	const message = `perform engine move\n`;
 
+	engine.stdin.write(message);
+	console.log("Sending to engine:", message);
 	let responded = false;
 
-	const handleEngineResponse = (data) => {
+	const handleEngineResponse2 = (data) => {
 		const output = data.toString().trim();
 		console.log("Engine Output:", output);
 
@@ -117,8 +118,8 @@ exports.getEngineMove = (req, res) => {
 			res.status(500).json({ error: "Error processing selection" });
 		}
 		if (responded) {
-			engine.stdout.removeListener("data", handleEngineResponse);
+			engine.stdout.removeListener("data", handleEngineResponse2);
 		}
 	};
-	engine.stdout.on("data", handleEngineResponse);
+	engine.stdout.on("data", handleEngineResponse2);
 };
