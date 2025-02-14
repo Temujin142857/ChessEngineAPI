@@ -21,10 +21,11 @@ exports.setupGame = (req, res) => {
 	const handleStartupResponce = (data) => {
 		const output = data.toString();
 		console.log("Engine Output:", output);
-		if (output.includes("ready")) {
+		if (output.includes("ready") && !output.includes("signal")) {
 			engineReady = true;
+			console.log("recieved ready signal");
 			engine.stdout.removeListener("data", handleStartupResponce);
-			res.status(200).json({ message: "success" });
+			res.status(200).send("success");
 		} else {
 			//res.status(500).json({ error: "Error starting engine" });
 		}
@@ -59,7 +60,8 @@ exports.handleSelection = (req, res) => {
 			const board = temp.split(":")[1];
 			console.log("Sending response - Board:", board);
 			responded = true;
-			res.status(200).json(parseBoardToJson(board));
+			const boardJ = parseBoardToJson(board);
+			res.status(200).json({ board: boardJ });
 		} else if (output.includes("selection success")) {
 			const temp = output.split(";")[1];
 			const highlightTarget = temp.split(":")[1];
@@ -68,7 +70,7 @@ exports.handleSelection = (req, res) => {
 				highlightTarget,
 			);
 			responded = true;
-			res.status(200).json({ highlightTarget });
+			res.status(200).json({ highlight: highlightTarget });
 		} else if (output.includes("illegal move")) {
 			console.log("Sending response - illegal move");
 			responded = true;
