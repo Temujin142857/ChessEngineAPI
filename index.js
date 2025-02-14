@@ -6,6 +6,8 @@ const {
 	handleSelection,
 	setupGame,
 	getEngineMove,
+	resetBoard,
+	killEngine,
 } = require("./controller.js");
 
 app.post("/handleSelection", (req, res) => {
@@ -18,6 +20,14 @@ app.get("/startGame", (req, res) => {
 
 app.get("/getEngineMove", (req, res) => {
 	getEngineMove(req, res);
+});
+
+app.get("/resetBoard", (req, res) => {
+	resetBoard(req, res);
+});
+
+app.get("/killEngine", (req, res) => {
+	killEngine(req, res);
 });
 
 app.listen(10000, function () {
