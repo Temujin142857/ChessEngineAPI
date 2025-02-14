@@ -59,7 +59,7 @@ exports.handleSelection = (req, res) => {
 			const board = temp.split(":")[1];
 			console.log("Sending response - Board:", board);
 			responded = true;
-			res.status(200).json({ board });
+			res.status(200).json(parseBoardToJson(board));
 		} else if (output.includes("selection success")) {
 			const temp = output.split(";")[1];
 			const highlightTarget = temp.split(":")[1];
@@ -107,7 +107,7 @@ exports.getEngineMove = (req, res) => {
 			const board = temp.split(":")[1];
 			console.log("Sending response - Board:", board);
 			responded = true;
-			res.status(200).json({ board });
+			res.status(200).json(parseBoardToJson(board));
 		} else if (output.includes("error")) {
 			console.log("Error in engine response.");
 			responded = true;
@@ -167,3 +167,14 @@ exports.killEngine = (req, res) => {
 	};
 	engine.stdout.on("data", handleStartupResponce);
 };
+
+function parseBoardToJson(boardS) {
+	const squares = boardS.split("/");
+	let board = [[], [], [], [], [], [], [], []];
+	for (let index = 0; index < squares.length; index++) {
+		if (squares[index].includes(".")) {
+			board[Math.floor(index / 8)].push(squares[index].split(".")[1]);
+		}
+	}
+	return board;
+}
