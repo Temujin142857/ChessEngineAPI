@@ -109,7 +109,8 @@ exports.getEngineMove = (req, res) => {
 			const board = temp.split(":")[1];
 			console.log("Sending response - Board:", board);
 			responded = true;
-			res.status(200).json(parseBoardToJson(board));
+			const boardJ = parseBoardToJson(board);
+			res.status(200).json({ board: boardJ });
 		} else if (output.includes("error")) {
 			console.log("Error in engine response.");
 			responded = true;
