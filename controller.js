@@ -57,6 +57,7 @@ exports.handleSelection = (req, res) => {
 	console.log("Sending to engine:", message);
 	engine.stdin.write(message);
 	let responded = false;
+
 	const handleEngineResponse = (data) => {
 		const output = data.toString().trim();
 		console.log("Engine Output:", output);
@@ -100,11 +101,7 @@ exports.getEngineMove = (req, res) => {
 		return res.status(500).json({ error: "Engine not ready" });
 	}
 
-	const message = `perform engine move\n`;
-
-	engine.stdin.write(message);
-	console.log("Sending to engine:", message);
-	let responded = false;
+    let responded=false;
 
 	const handleEngineResponse = (data) => {
 		const lines = data.toString().split('\n');
@@ -114,9 +111,9 @@ exports.getEngineMove = (req, res) => {
 		if (trimmed.includes("move success")) {
 			const temp = trimmed.split(";")[2];
 			const board = temp.split(":")[1];
-			console.log("Sending response - Board:", board);
 			responded = true;
-			res.status(200).json({ board });
+			const boardJ = parseBoardToJson(board);
+			res.status(200).json({ board: boardJ });
 			break;
 		} else if (trimmed.includes("error")) {
 			console.log("Error in engine response.");
@@ -125,6 +122,7 @@ exports.getEngineMove = (req, res) => {
 		}
 	}		
 		if (responded) {
+			console.log('removing listner')
 			engine.stdout.removeListener("data", handleEngineResponse);
 		}
 	};
@@ -133,12 +131,6 @@ exports.getEngineMove = (req, res) => {
 	console.log("Sending to engine:", message);
 	engine.stdout.on("data", handleEngineResponse);
 	engine.stdin.write(message);
-
-	let responded = false;
-
-	
-
-	
 };
 
 exports.resetBoard = (req, res) => {
