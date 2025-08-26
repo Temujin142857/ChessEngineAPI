@@ -1,6 +1,7 @@
 const express = require("express");
 const cors = require('cors');
 var app = express();
+app.use(cors());
 app.use(express.json());
 app.use(cors());
 
@@ -12,6 +13,8 @@ const {
 	handleSelection,
 	setupGame,
 	getEngineMove,
+	resetBoard,
+	killEngine,
 } = require("./controller.js");
 
 app.post("/handleSelection", (req, res) => {
@@ -27,6 +30,14 @@ app.get("/startGame", (req, res) => {
 app.get("/getEngineMove", (req, res) => {
 	console.log("get engine move request recieved");
 	getEngineMove(req, res);
+});
+
+app.get("/resetBoard", (req, res) => {
+	resetBoard(req, res);
+});
+
+app.get("/killEngine", (req, res) => {
+	killEngine(req, res);
 });
 
 app.listen(10000, function () {

@@ -9,7 +9,6 @@ let playerIsWhite = true;
 let engine;
 
 exports.setupGame = (req, res) => {
-	// Start the chess engine as a child process
 	engine = spawn(
 		javaExecutable,
 		["-jar", enginePath, playerIsWhite.toString()],
@@ -20,7 +19,6 @@ exports.setupGame = (req, res) => {
 
 	let ready = false;
 
-	// Listen for output from the engine
 	const handleStartupResponce = (data) => {
 		const lines = data.toString().split('\n');
 	for (const line of lines) {
@@ -68,7 +66,8 @@ exports.handleSelection = (req, res) => {
 			const board = temp.split(":")[1];
 			console.log("Sending response - Board:", board);
 			responded = true;
-			res.status(200).json({ board });
+			const boardJ = parseBoardToJson(board);
+			res.status(200).json({ board: boardJ });
 		} else if (output.includes("selection success")) {
 			const temp = output.split(";")[1];
 			const highlightTarget = temp.split(":")[1];
@@ -77,10 +76,8 @@ exports.handleSelection = (req, res) => {
 				highlightTarget,
 			);
 			responded = true;
-			res.status(200).json({ highlightTarget });
+			res.status(200).json({ highlight: highlightTarget });
 		} else if (output.includes("illegal move")) {
-			const temp = output.split(";")[1];
-			const highlightTarget = temp.split(":")[1];
 			console.log("Sending response - illegal move");
 			responded = true;
 			res.status(200).json({ result: "illegal move" });
@@ -91,6 +88,7 @@ exports.handleSelection = (req, res) => {
 		}
 		if (responded) {
 			engine.stdout.removeListener("data", handleEngineResponse);
+			console.log("removed");
 		}
 	};
 	engine.stdout.on("data", handleEngineResponse);
@@ -101,6 +99,12 @@ exports.getEngineMove = (req, res) => {
 		console.log("Engine not ready.");
 		return res.status(500).json({ error: "Engine not ready" });
 	}
+
+	const message = `perform engine move\n`;
+
+	engine.stdin.write(message);
+	console.log("Sending to engine:", message);
+	let responded = false;
 
 	const handleEngineResponse = (data) => {
 		const lines = data.toString().split('\n');
@@ -136,3 +140,62 @@ exports.getEngineMove = (req, res) => {
 
 	
 };
+
+exports.resetBoard = (req, res) => {
+	if (!engineReady) {
+		console.log("Engine not ready.");
+		return res.status(500).json({ error: "Engine not ready" });
+	}
+
+	const message = "reset\n";
+	engine.stdin.write(message);
+	console.log("Sending to engine:", message);
+
+	const handleStartupResponce = (data) => {
+		const output = data.toString();
+		console.log("Engine Output:", output);
+		if (output.includes("complete")) {
+			engine.stdin.write("engine ready?\n");
+		} else if (output.includes("ready")) {
+			engineReady = true;
+			engine.stdout.removeListener("data", handleStartupResponce);
+			res.status(200).json({ message: "success" });
+		} else {
+			//res.status(500).json({ error: "Error starting engine" });
+		}
+	};
+	engine.stdout.on("data", handleStartupResponce);
+};
+
+exports.killEngine = (req, res) => {
+	if (!engineReady) {
+		console.log("Engine not ready.");
+		return res.status(500).json({ error: "Engine not ready" });
+	}
+	const message = "kill\n";
+	engine.stdin.write(message);
+	console.log("Sending to engine:", message);
+
+	const handleStartupResponce = (data) => {
+		const output = data.toString();
+		console.log("Engine Output:", output);
+		if (output.includes("program terminated")) {
+			engineReady = false;
+			res.status(200).json({ message: "success" });
+		} else {
+			//res.status(500).json({ error: "Error starting engine" });
+		}
+	};
+	engine.stdout.on("data", handleStartupResponce);
+};
+
+function parseBoardToJson(boardS) {
+	const squares = boardS.split("/");
+	let board = [[], [], [], [], [], [], [], []];
+	for (let index = 0; index < squares.length; index++) {
+		if (squares[index].includes(".")) {
+			board[Math.floor(index / 8)].push(squares[index].split(".")[1]);
+		}
+	}
+	return board;
+}
