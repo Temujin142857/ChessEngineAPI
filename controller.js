@@ -1,7 +1,9 @@
 const { spawn } = require("child_process");
 const javaExecutable = "java"; // Ensure Java is in your system's PATH
-const enginePath =
-	"C:\\Users\\Tomio\\Programming\\Chess\\Chess_App_Headless\\out\\artifacts\\Chess_Engine_jar\\Chess_Engine.jar";
+const path = require('path');
+
+// Get absolute path to the JAR
+const enginePath = path.join(__dirname, 'Chess_Engine.jar');
 
 let engineReady = false;
 let playerIsWhite = true;
@@ -27,7 +29,7 @@ exports.setupGame = (req, res) => {
 			engine.stdout.removeListener("data", handleStartupResponce);
 			res.status(200).send("success");
 		} else {
-			//res.status(500).json({ error: "Error starting engine" });
+			res.status(500).json({ error: "Error starting engine" });
 		}
 	};
 	engine.stdout.on("data", handleStartupResponce);
