@@ -3,7 +3,7 @@ const javaExecutable = "java"; // Ensure Java is in your system's PATH
 const path = require('path');
 
 // Get absolute path to the JAR
-const enginePath = path.join(__dirname, 'Chess_Engine.jar');
+const enginePath = path.join(__dirname, 'Chess_App_Headless.jar');
 
 let engineReady = false;
 let playerIsWhite = true;
@@ -17,18 +17,20 @@ exports.setupGame = (req, res) => {
 			stdio: ["pipe", "pipe", "pipe"],
 		},
 	);
-
+	console.log("hi")
 	engine.stdin.write("engine ready?\n");
 
 	const handleStartupResponce = (data) => {
 		const output = data.toString();
 		console.log("Engine Output:", output);
+		console.log("end")
 		if (output.includes("ready") && !output.includes("signal")) {
 			engineReady = true;
 			console.log("recieved ready signal");
 			engine.stdout.removeListener("data", handleStartupResponce);
 			res.status(200).send("success");
 		} else {
+			console.log("hi2")
 			res.status(500).json({ error: "Error starting engine" });
 		}
 	};
