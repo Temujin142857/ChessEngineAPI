@@ -1,4 +1,5 @@
 const { spawn } = require("child_process");
+const { read } = require("fs");
 const javaExecutable = "java"; // Ensure Java is in your system's PATH
 const path = require('path');
 
@@ -17,24 +18,27 @@ exports.setupGame = (req, res) => {
 			stdio: ["pipe", "pipe", "pipe"],
 		},
 	);
-	console.log("hi")
-	engine.stdin.write("engine ready?\n");
+
+	let ready = false;
 
 	const handleStartupResponce = (data) => {
-		const output = data.toString();
-		console.log("Engine Output:", output);
-		console.log("end")
-		if (output.includes("ready") && !output.includes("signal")) {
+		const lines = data.toString().split('\n');
+	for (const line of lines) {
+		const trimmed = line.trim();
+		console.log("Engine Output Line:", trimmed);
+		if (trimmed === "ready") {
 			engineReady = true;
-			console.log("recieved ready signal");
-			engine.stdout.removeListener("data", handleStartupResponce);
-			res.status(200).send("success");
-		} else {
-			console.log("hi2")
-			res.status(500).json({ error: "Error starting engine" });
+			res.status(200).json({ message: "success" });
+            ready=true;
+			break;
 		}
+	}
+	engine.stdout.removeListener("data", handleStartupResponce);
+	if(!ready)res.status(500).json({message: "engine did not startup"})
 	};
 	engine.stdout.on("data", handleStartupResponce);
+
+	engine.stdin.write("engine ready?\n");	
 };
 
 exports.handleSelection = (req, res) => {
@@ -55,6 +59,7 @@ exports.handleSelection = (req, res) => {
 	console.log("Sending to engine:", message);
 	engine.stdin.write(message);
 	let responded = false;
+
 	const handleEngineResponse = (data) => {
 		const output = data.toString().trim();
 		console.log("Engine Output:", output);
@@ -98,33 +103,36 @@ exports.getEngineMove = (req, res) => {
 		return res.status(500).json({ error: "Engine not ready" });
 	}
 
-	const message = `perform engine move\n`;
-
-	engine.stdin.write(message);
-	console.log("Sending to engine:", message);
-	let responded = false;
+    let responded=false;
 
 	const handleEngineResponse = (data) => {
-		const output = data.toString().trim();
-		console.log("Engine Output:", output);
-
-		if (output.includes("move success")) {
-			const temp = output.split(";")[2];
+		const lines = data.toString().split('\n');
+		for (const line of lines) {
+		const trimmed = line.trim();
+		console.log("Engine Output Line:", trimmed);
+		if (trimmed.includes("move success")) {
+			const temp = trimmed.split(";")[2];
 			const board = temp.split(":")[1];
-			console.log("Sending response - Board:", board);
 			responded = true;
 			const boardJ = parseBoardToJson(board);
 			res.status(200).json({ board: boardJ });
-		} else if (output.includes("error")) {
+			break;
+		} else if (trimmed.includes("error")) {
 			console.log("Error in engine response.");
 			responded = true;
 			res.status(500).json({ error: "Error processing selection" });
 		}
+	}		
 		if (responded) {
+			console.log('removing listner')
 			engine.stdout.removeListener("data", handleEngineResponse);
 		}
 	};
+
+	const message = "perform engine move\n";
+	console.log("Sending to engine:", message);
 	engine.stdout.on("data", handleEngineResponse);
+	engine.stdin.write(message);
 };
 
 exports.resetBoard = (req, res) => {
