@@ -6,7 +6,7 @@ app.use(express.json());
 app.use(cors());
 
 app.use(cors({
-  origin: 'http://localhost:5173'
+  origin: ['http://localhost:5173', 'https://tomionagano.ca']
 }));
 
 const {
@@ -40,6 +40,6 @@ app.get("/killEngine", (req, res) => {
 	killEngine(req, res);
 });
 
-app.listen(10000, function () {
-	console.log("Started application on port %d", 10000);
+app.listen(5174, function () {
+	console.log("Started application on port %d", 5174);
 });
