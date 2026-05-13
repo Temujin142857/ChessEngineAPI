@@ -10,7 +10,7 @@ let engineReady = false;
 let playerIsWhite = true;
 let engine;
 
-exports.setupGame = (req, res) => {
+exports.setupGame = (message, socket) => {
 	engine = spawn(
 		javaExecutable,
 		["-jar", enginePath, playerIsWhite.toString()],
@@ -23,41 +23,42 @@ exports.setupGame = (req, res) => {
 
 	const handleStartupResponce = (data) => {
 		const lines = data.toString().split('\n');
-	for (const line of lines) {
-		const trimmed = line.trim();
-		console.log("Engine Output Line:", trimmed);
-		if (trimmed === "ready") {
-			engineReady = true;
-			res.status(200).json({ message: "success" });
-            ready=true;
-			break;
+		for (const line of lines) {
+			const trimmed = line.trim();
+			console.log("Engine Output Line:", trimmed);
+			if (trimmed === "ready") {
+				engineReady = true;
+				socket.send(JSON.stringify({type: "startGame", payload: "success"}));
+				ready=true;
+				break;
+			}
 		}
-	}
-	engine.stdout.removeListener("data", handleStartupResponce);
-	if(!ready)res.status(500).json({message: "engine did not startup"})
+		engine.stdout.removeListener("data", handleStartupResponce);
+		if(!ready)socket.send(JSON.stringify({type: "startGame", payload: "engine did not startup"}));
 	};
 	engine.stdout.on("data", handleStartupResponce);
-
 	engine.stdin.write("engine ready?\n");	
 };
 
-exports.handleSelection = (req, res) => {
+exports.handleSelection = (message, socket) => {
 	if (!engineReady) {
 		console.log("Engine not ready.");
-		return res.status(500).json({ error: "Engine not ready" });
+		socket.send(JSON.stringify({type: "Error", payload: "Engine not ready"}));
+		return;
 	}
+	console.log(message)
 
-	const { coordinates } = req.body;
+	const  coordinates  = message.coordinates;
 
 	if (!coordinates) {
-		console.log("No moves provided.");
-		return res.status(400).json({ error: "No moves provided" });
+		console.log("No moves provided: ", coordinates);
+		return socket.send(JSON.stringify({type: "Error", payload: "No moves provided"}));
 	}
 
-	const message = `coordinates:${coordinates[0]},${coordinates[1]}\n`;
+	const engineMessage = `coordinates:${coordinates[0]},${coordinates[1]}\n`;
 
-	console.log("Sending to engine:", message);
-	engine.stdin.write(message);
+	console.log("Sending to engine:", engineMessage);
+	engine.stdin.write(engineMessage);
 	let responded = false;
 
 	const handleEngineResponse = (data) => {
@@ -70,7 +71,7 @@ exports.handleSelection = (req, res) => {
 			console.log("Sending response - Board:", board);
 			responded = true;
 			const boardJ = parseBoardToJson(board);
-			res.status(200).json({ board: boardJ });
+			socket.send(JSON.stringify({ type: "handleSelection", board: boardJ }));
 		} else if (output.includes("selection success")) {
 			const temp = output.split(";")[1];
 			const highlightTarget = temp.split(":")[1];
@@ -79,15 +80,15 @@ exports.handleSelection = (req, res) => {
 				highlightTarget,
 			);
 			responded = true;
-			res.status(200).json({ highlight: highlightTarget });
+			socket.send(JSON.stringify({type: "handleSelection", highlightTarget}));
 		} else if (output.includes("illegal move")) {
 			console.log("Sending response - illegal move");
 			responded = true;
-			res.status(200).json({ result: "illegal move" });
+			socket.send(JSON.stringify({type: "handleSelection", result: "illegal move"}));
 		} else if (output.includes("error")) {
 			console.log("Error in engine response.");
 			responded = true;
-			res.status(500).json({ error: "Error processing selection" });
+			socket.send(JSON.stringify({type: "Error", payload: "Error processing selection"}));
 		}
 		if (responded) {
 			engine.stdout.removeListener("data", handleEngineResponse);
@@ -97,10 +98,11 @@ exports.handleSelection = (req, res) => {
 	engine.stdout.on("data", handleEngineResponse);
 };
 
-exports.getEngineMove = (req, res) => {
+exports.getEngineMove = (message, socket) => {
 	if (!engineReady) {
 		console.log("Engine not ready.");
-		return res.status(500).json({ error: "Engine not ready" });
+		socket.send(JSON.stringify({type: "Error", payload: "Engine not ready"}));
+		return;
 	}
 
     let responded=false;
@@ -115,12 +117,12 @@ exports.getEngineMove = (req, res) => {
 			const board = temp.split(":")[1];
 			responded = true;
 			const boardJ = parseBoardToJson(board);
-			res.status(200).json({ board: boardJ });
+			socket.send(JSON.stringify({type: "getEngineMove", board: boardJ}));
 			break;
 		} else if (trimmed.includes("error")) {
 			console.log("Error in engine response.");
 			responded = true;
-			res.status(500).json({ error: "Error processing selection" });
+			socket.send(JSON.stringify({type: "Error", payload: "Error processing selection"}));
 		}
 	}		
 		if (responded) {
@@ -129,16 +131,16 @@ exports.getEngineMove = (req, res) => {
 		}
 	};
 
-	const message = "perform engine move\n";
-	console.log("Sending to engine:", message);
+	const engineMessage = "perform engine move\n";
+	console.log("Sending to engine:", engineMessage);
 	engine.stdout.on("data", handleEngineResponse);
-	engine.stdin.write(message);
+	engine.stdin.write(engineMessage);
 };
 
-exports.resetBoard = (req, res) => {
+exports.resetBoard = (socket) => {
 	if (!engineReady) {
 		console.log("Engine not ready.");
-		return res.status(500).json({ error: "Engine not ready" });
+		socket.send(JSON.stringify({type: "Error", payload: "Engine not ready"}));
 	}
 
 	const message = "reset\n";
@@ -153,7 +155,7 @@ exports.resetBoard = (req, res) => {
 		} else if (output.includes("ready")) {
 			engineReady = true;
 			engine.stdout.removeListener("data", handleStartupResponce);
-			res.status(200).json({ message: "success" });
+			socket.send(JSON.stringify({type: "resetBoard", payload: "success"}));
 		} else {
 			//res.status(500).json({ error: "Error starting engine" });
 		}
@@ -161,10 +163,10 @@ exports.resetBoard = (req, res) => {
 	engine.stdout.on("data", handleStartupResponce);
 };
 
-exports.killEngine = (req, res) => {
+exports.killEngine = () => {
 	if (!engineReady) {
-		console.log("Engine not ready.");
-		return res.status(500).json({ error: "Engine not ready" });
+		console.log("Engine not ready.");		
+		return;
 	}
 	const message = "kill\n";
 	engine.stdin.write(message);
@@ -174,9 +176,7 @@ exports.killEngine = (req, res) => {
 		const output = data.toString();
 		console.log("Engine Output:", output);
 		if (output.includes("program terminated")) {
-			engineReady = false;
-			res.status(200).json({ message: "success" });
-		} else {
+			engineReady = false;			
 			//res.status(500).json({ error: "Error starting engine" });
 		}
 	};
