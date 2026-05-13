@@ -8,10 +8,10 @@ const enginePath = path.join(__dirname, 'Chess_App_Headless.jar');
 
 let engineReady = false;
 let playerIsWhite = true;
-let engine;
+let engines={};
 
 exports.setupGame = (message, socket) => {
-	engine = spawn(
+	engines[socket.id] = spawn(
 		javaExecutable,
 		["-jar", enginePath, playerIsWhite.toString()],
 		{
@@ -33,11 +33,11 @@ exports.setupGame = (message, socket) => {
 				break;
 			}
 		}
-		engine.stdout.removeListener("data", handleStartupResponce);
+		engines[socket.id].stdout.removeListener("data", handleStartupResponce);
 		if(!ready)socket.send(JSON.stringify({type: "startGame", payload: "engine did not startup"}));
 	};
-	engine.stdout.on("data", handleStartupResponce);
-	engine.stdin.write("engine ready?\n");	
+	engines[socket.id].stdout.on("data", handleStartupResponce);
+	engines[socket.id].stdin.write("engine ready?\n");	
 };
 
 exports.handleSelection = (message, socket) => {
@@ -58,7 +58,7 @@ exports.handleSelection = (message, socket) => {
 	const engineMessage = `coordinates:${coordinates[0]},${coordinates[1]}\n`;
 
 	console.log("Sending to engine:", engineMessage);
-	engine.stdin.write(engineMessage);
+	engines[socket.id].stdin.write(engineMessage);
 	let responded = false;
 
 	const handleEngineResponse = (data) => {
@@ -91,11 +91,11 @@ exports.handleSelection = (message, socket) => {
 			socket.send(JSON.stringify({type: "Error", payload: "Error processing selection"}));
 		}
 		if (responded) {
-			engine.stdout.removeListener("data", handleEngineResponse);
+			engines[socket.id].stdout.removeListener("data", handleEngineResponse);
 			console.log("removed");
 		}
 	};
-	engine.stdout.on("data", handleEngineResponse);
+	engines[socket.id].stdout.on("data", handleEngineResponse);
 };
 
 exports.getEngineMove = (message, socket) => {
@@ -127,14 +127,14 @@ exports.getEngineMove = (message, socket) => {
 	}		
 		if (responded) {
 			console.log('removing listner')
-			engine.stdout.removeListener("data", handleEngineResponse);
+			engines[socket.id].stdout.removeListener("data", handleEngineResponse);
 		}
 	};
 
 	const engineMessage = "perform engine move\n";
 	console.log("Sending to engine:", engineMessage);
-	engine.stdout.on("data", handleEngineResponse);
-	engine.stdin.write(engineMessage);
+	engines[socket.id].stdout.on("data", handleEngineResponse);
+	engines[socket.id].stdin.write(engineMessage);
 };
 
 exports.resetBoard = (socket) => {
@@ -144,32 +144,32 @@ exports.resetBoard = (socket) => {
 	}
 
 	const message = "reset\n";
-	engine.stdin.write(message);
+	engines[socket.id].stdin.write(message);
 	console.log("Sending to engine:", message);
 
 	const handleStartupResponce = (data) => {
 		const output = data.toString();
 		console.log("Engine Output:", output);
 		if (output.includes("complete")) {
-			engine.stdin.write("engine ready?\n");
+			engines[socket.id].stdin.write("engine ready?\n");
 		} else if (output.includes("ready")) {
 			engineReady = true;
-			engine.stdout.removeListener("data", handleStartupResponce);
+			engines[socket.id].stdout.removeListener("data", handleStartupResponce);
 			socket.send(JSON.stringify({type: "resetBoard", payload: "success"}));
 		} else {
 			//res.status(500).json({ error: "Error starting engine" });
 		}
 	};
-	engine.stdout.on("data", handleStartupResponce);
+	engines[socket.id].stdout.on("data", handleStartupResponce);
 };
 
-exports.killEngine = () => {
+exports.killEngine = (id) => {
 	if (!engineReady) {
 		console.log("Engine not ready.");		
 		return;
 	}
 	const message = "kill\n";
-	engine.stdin.write(message);
+	engines[id].stdin.write(message);
 	console.log("Sending to engine:", message);
 
 	const handleStartupResponce = (data) => {
@@ -180,7 +180,7 @@ exports.killEngine = () => {
 			//res.status(500).json({ error: "Error starting engine" });
 		}
 	};
-	engine.stdout.on("data", handleStartupResponce);
+	engines[id].stdout.on("data", handleStartupResponce);
 };
 
 function parseBoardToJson(boardS) {

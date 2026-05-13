@@ -23,15 +23,21 @@ const {
 	killEngine,
 } = require("./controller.js");
 
-
+websocketServer.getUniqueID = function () {
+    function s4() {
+        return Math.floor((1 + Math.random()) * 0x10000).toString(16).substring(1);
+    }
+    return s4() + s4() + '-' + s4();
+};
 
 websocketServer.on('connection', (socket) => {
-  // Log a message when a new client connects
+
   console.log('client connected.');
+  socket.id = websocketServer.getUniqueID();
   // Listen for incoming WebSocket messages
   socket.on('message', (data) => {
 	const message=JSON.parse(data);
-	console.log("message recieved: ", message);
+	console.log("message recieved: ", message, "from: ", socket.id);
 
 	switch (message.type){
 		case "setupGame":
@@ -53,7 +59,7 @@ websocketServer.on('connection', (socket) => {
   });
   // Listen for WebSocket connection close events
   socket.on('close', () => {
-    killEngine();
+    killEngine(socket.id);
     console.log('Client disconnected');
   });
 });
