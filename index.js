@@ -1,5 +1,6 @@
 const express = require("express");
 const cors = require('cors');
+const http = require('http');
 
 const WebSocket = require("ws");
 var app = express();
@@ -33,8 +34,8 @@ websocketServer.on('connection', (socket) => {
 	console.log("message recieved: ", message);
 
 	switch (message.type){
-		case "startGame":
-			startGame(message, socket);
+		case "setupGame":
+			setupGame(message, socket);
 			break;
 		case "handleSelection":
 			handleSelection(message, socket);
@@ -46,7 +47,7 @@ websocketServer.on('connection', (socket) => {
 			resetBoard(socket);
 			break;
 		case "killEngine":
-			killEngine(socket);
+			killEngine();
 			break;				
 	}
   });
