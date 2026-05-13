@@ -41,19 +41,19 @@ websocketServer.on('connection', (socket) => {
 
 	switch (message.type){
 		case "setupGame":
-			setupGame(message, socket);
+			setupGame(socket);
 			break;
 		case "handleSelection":
 			handleSelection(message, socket);
 			break;
 		case "getEngineMove":
-			getEngineMove(message, socket);
+			getEngineMove(socket);
 			break;
 		case "resetBoard":
 			resetBoard(socket);
 			break;
 		case "killEngine":
-			killEngine();
+			killEngine(socket.id);
 			break;				
 	}
   });
