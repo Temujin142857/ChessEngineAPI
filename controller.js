@@ -66,10 +66,11 @@ exports.killEngine = (id) => {
 const handleEngineMessage = (data) => {
 	const lines = data.toString().split('\n');
 	for (const line of lines) {
+		console.log("L: ",line);
 		let trimmed = line.trim();
 		const id=trimmed.split('@')[1];
 		trimmed=trimmed.split('@')[0];
-
+		if(trimmed.includes("signal")){continue;}
 		console.log("Engine Output Line:", trimmed, id);
 		if (trimmed.includes("ready")) {
 			readyStates[id]=true;
@@ -103,14 +104,16 @@ const handleEngineMessage = (data) => {
 			console.log("Sending response - illegal move");
 			sockets[id].send(JSON.stringify({type: "handleSelection", result: "illegal move"}));
 		} 		
-		else if(trimmed.includes("Checkmate")){
+		else if(trimmed.includes("Checkmate!")){
 			const temp = trimmed.split(" ")[1];			
 			sockets[id].send(JSON.stringify({type: "checkmate", winner: temp}));
 		} 
 		
 		//response to a successful reset
 		else if (trimmed.includes("complete")) {
-			engines[id].stdin.write("engine ready?\n");
+			awaitingengineMove[id]=false;
+			console.log("sending to engine: engine ready?@"+id)
+			engines[id].stdin.write("engine ready?@"+id+"\n");
 		} 
 		
 		//responce to a successful termination
@@ -129,15 +132,20 @@ const handleEngineMessage = (data) => {
 			sockets[id].send(JSON.stringify({type: "Error", payload: "Engine ancountered an error"}));
 		} 
 
-		else{console.log("wtf?", trimmed);}
+		else{//console.log("wtf?", trimmed);
+			}
 	}
 };
 
 function engineCheck(id){
 if (!readyStates[id]) {
+	try{
 		console.log("Engine not ready.");
 		sockets[id].send(JSON.stringify({type: "Error", payload: "Engine not ready"}));
 		return false;
+	}catch (e){
+		console.log("invalid socket", e)
+	}
 	}
 	return true;
 }
