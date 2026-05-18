@@ -21,6 +21,8 @@ const {
 	getEngineMove,
 	resetBoard,
 	killEngine,
+	selectedPromotionPiece,
+
 } = require("./controller.js");
 
 websocketServer.getUniqueID = function () {
@@ -48,6 +50,9 @@ websocketServer.on('connection', (socket) => {
 			break;
 		case "getEngineMove":
 			getEngineMove(socket);
+			break;
+		case "selectedPromotionPiece":
+			selectedPromotionPiece(message.piece, socket);
 			break;
 		case "resetBoard":
 			resetBoard(socket);

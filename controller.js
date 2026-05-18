@@ -63,6 +63,13 @@ exports.killEngine = (id) => {
 	engines[id].stdin.write(message);	
 }
 
+exports.selectedPromotionPiece=(name, socket)=>{
+	if(!engineCheck(socket.id))return;
+	const message = "selectedPromotionPiece:"+name+"\n";
+	console.log("Sending to engine:", message);
+	engines[socket.id].stdin.write(message);	
+}
+
 const handleEngineMessage = (data) => {
 	const lines = data.toString().split('\n');
 	for (const line of lines) {
@@ -100,6 +107,12 @@ const handleEngineMessage = (data) => {
 			);
 			sockets[id].send(JSON.stringify({type: "handleSelection", highlightTarget}));
 		} 		
+		else if (trimmed.includes("promote")){
+			let colour="B";
+			if(trimmed.includes("White"))colour="W";
+			console.log("Sending response - promote: "+colour);
+			sockets[id].send(JSON.stringify({type: "promote", payload: colour}));
+		}
 		else if (trimmed.includes("illegal move")) {
 			console.log("Sending response - illegal move");
 			sockets[id].send(JSON.stringify({type: "handleSelection", result: "illegal move"}));
